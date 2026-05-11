@@ -1,3 +1,9 @@
 .devenv/
 .devenv.flake.nix
-tests/test_*
+tests/test_types
+tests/test_ownership
+tests/test_state
+tests/test_profile
+tests/test_keymap
+tests/test_config
+tests/test_api_types
