@@ -1,0 +1,11 @@
+[daemon]
+socket = "/run/user/1000/sidebard.sock"
+
+[kanata]
+host = "127.0.0.1"
+port = 6666
+reconnect_ms = 3000
+
+[defaults]
+overlay_timeout_ms = 1200
+collapsed_visible_px = 28

@@ -1,0 +1,21 @@
+id = "chat"
+title = "Chat"
+priority = 200
+match_app_ids = ['^vesktop$', '^org\\.telegram\\.desktop$']
+
+[profile]
+title = "Chat"
+kanata_layer = "sidebar-chat"
+active = { ratio = 0.34 }
+
+
+[[commands]]
+id = "chat.quick_reply"
+title = "Quick reply"
+description = "Reply to the selected conversation"
+category = "messaging"
+tags = ["reply", "chat"]
+sequence = ["Leader", "R"]
+when_states = ["active", "focused"]
+action = { shell = "sidebard-action chat quick-reply" }
+dangerous = false

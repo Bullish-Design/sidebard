@@ -115,6 +115,7 @@ type
   KeyToken* = distinct string
 
 proc `==`*(a, b: KeyToken): bool {.borrow.}
+proc `<`*(a, b: KeyToken): bool {.borrow.}
 proc hash*(a: KeyToken): Hash {.borrow.}
 proc `$`*(a: KeyToken): string {.borrow.}
 
