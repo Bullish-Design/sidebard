@@ -1,8 +1,8 @@
 import std/[options, tables]
 import std/monotimes
-import chronos
+from std/asyncdispatch import waitFor
 import results
-import ../nimri_ipc
+import nimri_ipc/nimri_ipc
 import ../core/types
 
 type
@@ -10,14 +10,17 @@ type
     client*: nimri_ipc.NiriClient
     eventStream*: nimri_ipc.NiriEventStream
 
-proc connect*(config: NiriConnectConfig = initNiriConnectConfig()): Future[Result[NiriAdapter, string]] {.async.} =
-  let clientRes = await nimri_ipc.openClient(config)
+proc connect*(config: NiriConnectConfig = initNiriConnectConfig()): Result[NiriAdapter, string] =
+  let clientRes =
+    try: waitFor nimri_ipc.openClient(config)
+    except CatchableError as e: return err("Failed to connect command client: " & e.msg)
   if clientRes.isErr:
     return err("Failed to connect command client: " & $clientRes.error)
 
-  let streamRes = await nimri_ipc.openEventStream(config)
+  let streamRes =
+    try: waitFor nimri_ipc.openEventStream(config)
+    except CatchableError as e: return err("Failed to open event stream: " & e.msg)
   if streamRes.isErr:
-    clientRes.get.close()
     return err("Failed to open event stream: " & $streamRes.error)
 
   ok(NiriAdapter(client: clientRes.get, eventStream: streamRes.get))
@@ -49,14 +52,18 @@ proc toDomainEvent*(niriEvent: nimri_ipc.NiriEvent): Option[Event] =
   else:
     none(Event)
 
-proc seedState*(adapter: NiriAdapter, state: ptr ShellState): Future[Result[void, string]] {.async.} =
-  let windowsRes = await adapter.client.getWindows()
+proc seedState*(adapter: NiriAdapter, state: ptr ShellState): Result[void, string] =
+  let windowsRes =
+    try: waitFor adapter.client.getWindows()
+    except CatchableError as e: return err("Failed to get windows: " & e.msg)
   if windowsRes.isErr:
     return err("Failed to get windows: " & $windowsRes.error)
   for w in windowsRes.get:
     state[].windows[types.WindowId(uint64(w.id))] = w.toDomain
 
-  let focusedRes = await adapter.client.getFocusedWindow()
+  let focusedRes =
+    try: waitFor adapter.client.getFocusedWindow()
+    except CatchableError as e: return err("Failed to get focused window: " & e.msg)
   if focusedRes.isErr:
     return err("Failed to get focused window: " & $focusedRes.error)
   if focusedRes.get.isSome:
@@ -64,18 +71,19 @@ proc seedState*(adapter: NiriAdapter, state: ptr ShellState): Future[Result[void
 
   ok()
 
-proc readNextEvent*(adapter: NiriAdapter): Future[Result[Event, string]] {.async.} =
-  let eventRes = await adapter.eventStream.next()
+proc readNextEvent*(adapter: NiriAdapter): Result[Event, string] =
+  let eventRes =
+    try: waitFor adapter.eventStream.next()
+    except CatchableError as e: return err("Event stream error: " & e.msg)
   if eventRes.isErr:
     return err("Event stream error: " & $eventRes.error)
 
   let domainEvent = toDomainEvent(eventRes.get)
   if domainEvent.isNone:
     return err("unhandled event type")
-
   ok(domainEvent.get)
 
-proc executeNiriAction*(adapter: NiriAdapter, action: NiriActionSpec): Future[Result[void, string]] {.async.} =
+proc executeNiriAction*(adapter: NiriAdapter, action: NiriActionSpec): Result[void, string] =
   let niriAction = case action.kind
     of naFocusWindow:
       nimri_ipc.focusWindow(nimri_ipc.WindowId(uint64(action.focusWindowId)))
@@ -92,7 +100,9 @@ proc executeNiriAction*(adapter: NiriAdapter, action: NiriActionSpec): Future[Re
         windowId = some(nimri_ipc.WindowId(uint64(action.moveWindowId))),
       )
 
-  let res = await adapter.client.doAction(niriAction)
+  let res =
+    try: waitFor adapter.client.doAction(niriAction)
+    except CatchableError as e: return err("Niri action failed: " & e.msg)
   if res.isErr:
     return err("Niri action failed: " & $res.error)
   ok()

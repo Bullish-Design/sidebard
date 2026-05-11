@@ -9,3 +9,6 @@ tests/test_config
 tests/test_api_types
 
 src/sidebard
+nimble.develop
+nimble.paths
+nimbledeps

@@ -6,7 +6,7 @@ import core/[types, config, state, profile, keymap]
 import adapters/[niri, kanata, rpc, sidebar_compat]
 import ./cli
 
-proc runDaemon*() {.async.} =
+proc runDaemon*() {.async: (raises: [Exception]).} =
   let configDir = getEnv("SIDEBARD_CONFIG_DIR", getCurrentDir() / "tests/fixtures")
   let loadedConfigRes = loadConfig(configDir)
   if loadedConfigRes.isErr:
@@ -46,16 +46,16 @@ proc runDaemon*() {.async.} =
 
   asyncSpawn rpcCtx.runRpcServer(shellState.config.daemonSocket)
 
-  let niriRes = await niri.connect()
+  let niriRes = niri.connect()
   if niriRes.isErr:
     warn "Failed to connect to Niri", err = niriRes.error
     while true:
       await sleepAsync(1000.milliseconds)
   let niriAdapter = niriRes.get
-  discard await niriAdapter.seedState(addr shellState)
+  discard niriAdapter.seedState(addr shellState)
 
   while true:
-    let eventRes = await niriAdapter.readNextEvent()
+    let eventRes = niriAdapter.readNextEvent()
     if eventRes.isErr:
       await sleepAsync(100.milliseconds)
       continue
@@ -67,7 +67,7 @@ proc runDaemon*() {.async.} =
         if kanataAdapter.isSome:
           discard await kanataAdapter.get.changeLayer(eff.layer)
       of efNiriAction:
-        discard await niriAdapter.executeNiriAction(eff.niriAction)
+        discard niriAdapter.executeNiriAction(eff.niriAction)
       of efNotifySubscribers:
         await rpcCtx.notifySubscribers()
       else:
