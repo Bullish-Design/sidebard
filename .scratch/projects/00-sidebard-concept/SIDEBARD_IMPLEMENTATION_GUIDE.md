@@ -43,7 +43,7 @@ Edit `sidebard.nimble`:
 ```nim
 # Package
 version       = "0.1.0"
-author        = "andrew"
+author        = "Bullish Design"
 description   = "Reactive shell daemon for Niri compositor"
 license       = "MIT"
 srcDir        = "src"
